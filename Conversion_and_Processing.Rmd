@@ -1,0 +1,95 @@
+---
+title: "Conversion_and_Processing_MotricityScript"
+author: "Grace E Deitzler"
+date: "8/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(reshape2)
+```
+# Conversion and Processing Tracker Data
+## Introduction
+
+This R script is used to convert and process the raw files that come off of the voluntary running tracker, and also provides a how-to guide on graphing the data. Once the tracker is done collecting data, the open terminal window can be closed and will be saved as a .txt file. This .txt file can be converted into a .csv and processed using the code below. Once it is processed it can be plotted and manipulated however is fitting for your interests. Here we show code for making a basic distance over time plot. Though we do not include it here, the file could also be manipulated to show speed or instantaneous velocity.
+
+## Converting .txt file from Arduino
+
+This first script will convert the raw .txt file that comes off the arduino into a usable .csv for further analysis. In some cases you may have to manually delete the first few extraneous rows of the .txt file that do not contain data. This can be done by opening the file in Notepad and then resaving it, or if you are working in RStudio, you can just open the file and delete the irrelevant rows. There may also be a row at the bottom that needs to be deleted as well. It is always best to manually check.
+
+Due to the constraints of the Arduino, counts start at 0 and restart at 0 when 65535 is hit, so a continuous column of increasing numbers is not possible. This for loop goes through each column for each sensor, converting the raw arduino output to continously go up, as opposed to going back to 0 after it rolls over 65535. The output array, Data2, is then used for further processing and analysis.
+
+```{r conversion}
+tab = read.table("Validation_SeparateCages.csv", sep = ",") #fill in your file name here
+Data2 = tab
+for (j in 1:6){
+  count = 0
+  for (i in 1:(dim(tab)[1]-1)){
+    Data2[i,j] = tab[i,j] +65535*count
+    if (tab[i+1,j] < tab[i,j])
+    {count <-count +1}
+  }
+  cat(j, " ")
+}
+
+diam_wheel = 4.5 # inches, estimated, need to have error included; change for your specific wheel
+circum = diam_wheel*pi
+circum_miles = circum*(1.57828e-5) #Circumference of the wheel in miles
+
+# This converts Data2 from number wheel rotations to distance traveled in miles
+Data2 = Data2*circum_miles
+
+# This exports the final processed Data2 to a csv for further work.
+write.csv(Data2, "Validation_SeparateCages.csv")
+#This cage was run for 3 consecutive nights - aug 2 through the morning of aug 5
+
+```
+
+## Adding column names. time column, and trimming
+
+In this step you can add column names (cage numbers, etc), and trim unused columns (if you did not use all 6 sensors.) The first column can also be trimmed as it just contains the row number. There is also a step to add in a column for Time. Since the sensor takes a measurement every 2 seconds and we run it overnight, we have converted here to hours.  
+
+Optional: If you have multiple files that you want to combine into one dataframe, you may have to trim them all to be the same number of rows. 
+
+
+All cages separate
+```{r process}
+#Read, rename, trim
+df_separate<- read.csv("Validation_SeparateCages.csv", header=TRUE, sep=",")
+df_separate <- df_separate[-c(1, 5:6)] #removes columns from sensors that were not used
+colnames(df_separate) <-  c("Cage_1", "Cage_2", "Cage_3", "Cage_4")
+
+#Add time
+df_separate$Time <- (1:dim(df_separate)[1])/1800 #dividing makes it hours
+
+#Trim to same length
+
+#Save the new file
+write.csv(df_separate, "Validation_Separate_Processed.csv")
+```
+
+## Plotting the distance over time
+
+This is a simple plot to observe the total distance traveled over time as recorded by the sensor. This uses the ggplot2 package.
+
+With all the mice together, the tracker was run from 8 PM Sunday evening to around 6 PM Tuesday evening.
+```{r plotting,echo=FALSE}
+
+#only sample once per hour
+df_together1 <- df_together[seq(1, nrow(df_together), 1800),]
+dim(df_together1)
+
+
+df_tog_plot <- ggplot(df_together1, aes(Time, Single_Cage_Four_Mice)) + geom_line() +
+  ggtitle("Single Cage, Four Mice") +
+  xlab("Time (hours)") +
+  ylab("Distance traveled (miles)")
+
+df_tog_plot
+  
+```
+
+The code presented here is merely a start. Other metrics can be assessed, such as velocity or speed, by manipulating the dataframe and using the appropriate plotting syntax. 
+
