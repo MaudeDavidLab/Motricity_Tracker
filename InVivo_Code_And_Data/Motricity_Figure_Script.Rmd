@@ -1,0 +1,321 @@
+---
+---
+title: "Motricity_Figure_Script"
+author: "Grace E Deitzler"
+date: "12/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(ggsci)
+library(reshape2)
+library(hrbrthemes)
+library(dplyr)
+```
+
+## Validation Experiment: in vivo
+
+Read in the files, check, and relabel if needed
+
+These files were already processed using the Conversion_and_Processing.Rmd script, which converted the raw .txt file from the Arduino into the .csv, added in a column for time, and converted the rotations to distance.
+
+```{r read}
+single <- read.csv("Validation_OneCage_Processed.csv") #all four mice in one cage
+
+together <- read.csv("Validation_Separate_Processed.csv") #four mice, four cages
+
+#check them
+
+head(single)
+head(together)
+
+#there is a column called X that has the row number in it, don't know if we need that right now
+```
+
+We ran this tracker over two nights and two days, so we want to only sample every 5 minutes to make the graph more readable.
+
+```{r}
+#removing extra hours that I left the tracker on
+
+single_five <-  single[seq(1, nrow(single), 100),]
+
+#removing extra hours that I left the tracker on
+together_mod <- together[-c(91265:122435),]
+together_five <- together_mod[seq(1, nrow(together_mod), 100),]
+
+write.csv(single_five, file = "single_cage.csv")
+write.csv(together_five, file = "four_cages.csv")
+```
+
+## Plots
+
+We want to compare the distances run in each validation experiment. The columns contatining the number of rotations has already been converted to miles, so we don't have to do this here.
+
+```{r plots, echo=FALSE}
+
+onecage <- ggplot(data = single_five, aes(x = Time, y = Single_Cage_Four_Mice)) +
+         geom_line(color = "#3D5A80", size = 2, alpha = 0.9) +
+  scale_x_continuous(breaks = c(0,6,12,18,24,30,36,42,48),
+                     labels=c("12 PM", "6 PM", "12 AM", "6 AM", "12 PM", "6 PM", "12 AM", "6 AM", "12 PM")) +
+         ggtitle("All mice in a single cage") +
+         xlab("Time (hours)") +
+        ylab("Distance (mi)") +
+  theme_ipsum(axis_title_just = "c")
+
+#ggsave("onecage.tiff", dpi = 300, plot = onecage)
+
+onecage
+ggsave("fig3b.png", plot = onecage, width = 7, height = 4, dpi = 300, units = "in", device="png")
+```
+
+```{r}
+
+#We need to melt the four cages
+
+melt_together_five <- melt(together_five, id.vars = "Time", measure.vars = c("Cage_1", "Cage_2", "Cage_3", "Cage_4"))
+
+head(melt_together_five)
+colnames(melt_together_five) <- c("Time", "Cage", "Distance")
+
+fourcage <- ggplot(data = melt_together_five, aes(x = Time, y = Distance, color = Cage)) +
+         geom_line(size = 2, alpha = 0.9) +
+   scale_x_continuous(breaks = c(0,6,12,18,24,30,36,42,48),
+                     labels=c("12 PM", "6 PM", "12 AM", "6 AM", "12 PM", "6 PM", "12 AM", "6 AM", "12 PM")) +
+  scale_color_motricity(palette = "four") +
+         ggtitle("Four mice in separate cages") +
+  ylim(0,10)+
+         xlab("Time (hours)") +
+        ylab("Distance (mi)") +
+  theme_ipsum(axis_title_just = "c")
+
+#ggsave("fourcage.tiff", dpi = 300, plot = fourcage)
+
+fourcage
+ggsave("fig3a.png", plot = fourcage, width = 7, height = 4, dpi = 300, units = "in", device="png")
+```
+
+```{r}
+fig3 <- onecage + fourcage
+fig3 <- fig3 + plot_annotation(tag_levels = 'A')
+
+fig3
+
+ggsave("fig3.eps", plot = fig3, device = "eps", width = 5, height = 4, units = "in")
+
+```
+
+## Caloric Restriction 
+
+We have four cohorts, each which were tracked at baseline and at 4 days of 80% caloric restriction. We want to plot a bar chart to compare the total distance ran by baseline and by starved.
+
+Here we are taking the data from Baseline on June 18, and the subsequent data from the days following the starvation period on June 22. 
+
+First, process the csv files, label and combine where needed.
+
+```{r baseline}
+df_baseline <- read.csv("df_baseline.csv")
+
+df_baseline$Condition <- "Baseline"
+
+```
+
+Now the restriction
+```{r restriction}
+df_restriction <- read.csv("df_restriction.csv")
+
+df_restriction$Condition <- "Caloric restriction"
+
+```
+
+Now that we have two data frames, one for baseline and one for starved, we can melt them down into the proper format for doing a line plot.
+
+```{r}
+melt_baseline <- melt(df_baseline, id.vars = "Time", measure.vars = c("Cage 1", "Cage 2", "Cage 3", "Cage 4", "Cage 5", "Cage 6", "Cage 7", "Cage 8"))
+
+melt_restriction <- melt(df_restriction, id.vars = "Time", measure.vars = c("Cage 1", "Cage 2", "Cage 3", "Cage 4", "Cage 5", "Cage 6", "Cage 7", "Cage 8"))
+
+colnames(melt_baseline) <- c("Time", "Cage", "Distance")
+melt_baseline$Condition <-  "Baseline"
+
+colnames(melt_restriction) <- c("Time", "Cage", "Distance")
+melt_restriction$Condition <- "Caloric restriction"
+```
+
+We can now make a plot of each of these. 
+
+```{r}
+baseline <- ggplot(data = melt_baseline, aes(x = Time, y = Distance, color = Cage)) +
+         geom_line(size = 1.5) +
+  scale_color_motricity(palette = "main") +
+         ggtitle("Baseline: before caloric restriction") +
+  ylim(0,10)+
+  xlim(0,10)+
+         xlab("Time (hours)") +
+        ylab("Distance (mi)") +
+  theme_ipsum(axis_title_just = "c") +
+  theme(legend.position = "none")
+baseline
+
+```
+
+
+```{r}
+restriction <- ggplot(data = melt_restriction, aes(x = Time, y = Distance, color = Cage)) +
+         geom_line(size = 1.5) +
+  scale_color_motricity(palette = "main") +
+         ggtitle("After caloric restriction") +
+  ylim(0,10)+
+  xlim(0,10)+
+         xlab("Time (hours)") +
+        ylab("Distance (mi)") +
+  theme_ipsum(axis_title_just = "c") +
+  theme(legend.title = element_blank())
+restriction
+```
+Now I want to do the barplot, but first we have to get the data into the right format. We'll need to group them by condition - baseline and restriction - and "cage" should be it's own column. I think we can do this if we add in a category column to each of the melted dfs and then combine them.
+
+```{r}
+
+#Dataframe with both of them, we will call it 'compare.br' with the br referring to 'baseline' and 'restriction'
+compare.br <- rbind(melt_baseline, melt_restriction)
+
+```
+
+
+Attempting a different kind of plot here. Need to rearrange the dataframe first, to extract just the final distance.
+
+```{r}
+
+cut_baseline <- df_baseline[rownames(df_baseline) == 20334, , drop = FALSE]
+cut_restriction <- df_restriction[rownames(df_restriction) == 20334, , drop = FALSE]
+
+compare.df <- rbind(cut_baseline, cut_restriction)
+
+melt_compare <- melt(compare.df, id.vars = "Condition", measure.vars = c("Cage 1", "Cage 2", "Cage 3", "Cage 4", "Cage 5", "Cage 6", "Cage 7", "Cage 8"))
+
+colnames(melt_compare) <- c("Condition", "Cage", "Distance")
+
+```
+
+Excellent, I think this worked?
+
+Now I want to make a scatter plot with connected dots to show the paired data
+
+```{r}
+#trying the ggpaired function
+
+#ggpaired(compare.df, cond1 = "Baseline", cond2 = "Caloric restriction", fill = "Condition") 
+
+#now trying something else
+
+compare.points <- ggplot(data = melt_compare_minus, aes(x = Condition, y = Distance)) +
+   geom_line(aes(group = Cage)) +
+  geom_point(size = 4, aes(color = Cage)) +
+  scale_color_motricity() +
+  ylab("Total distance (mi)") +
+  ggtitle("Total distance before and after caloric restriction") + 
+  theme_ipsum(axis_title_just = "c")
+
+compare.points
+```
+
+Put it all together using Patchwork
+
+```{r}
+fig4 <- (baseline | restriction) /
+  compare.points
+
+fig4 <- fig4 + plot_annotation(tag_levels = 'A')
+fig4
+
+ggsave("fig4.eps", fig4, device = "eps", width = 11, height = 8.5)
+```
+
+
+Save all the things
+```{r}
+ggsave("fig3A_edit.png", dpi = 300, plot = onecage)
+ggsave("fig3B_edit.png", dpi = 300, plot = fourcage)
+ggsave("fig4A_edit.png", dpi = 300, plot = baseline)
+ggsave("fig4B_edit.png", dpi = 300, plot = restriction)
+ggsave("fig4C_edit.png", dpi = 300, plot = compare.points)
+```
+
+# Statistical analysis
+
+```{r}
+
+before <- subset(melt_compare,  Condition == "Baseline", Distance,
+                 drop = TRUE)
+# subset weight data after treatment
+after <- subset(melt_compare,  Condition == "Caloric restriction", Distance,
+                 drop = TRUE)
+res_compare <- wilcox.test(before, after, paired = TRUE)
+res_compare
+```
+
+
+Cage 5 had a mechanical failure on the second night - remove from the data
+
+```{r}
+melt_compare_minus <- melt_compare[-c(9:10), ]
+
+
+ggboxplot(melt_compare_minus, x = "Condition", y = "Distance", 
+          color = "Condition", palette = c("#00AFBB", "#E7B800"),
+          order = c("Baseline", "Caloric restriction"),
+          ylab = "Distance", xlab = "Groups")
+
+```
+
+stats without cage 5:
+
+```{r}
+before2 <- subset(melt_compare_minus,  Condition == "Baseline", Distance,
+                 drop = TRUE)
+# subset weight data after treatment
+after2 <- subset(melt_compare_minus,  Condition == "Caloric restriction", Distance,
+                 drop = TRUE)
+res_compare_minus <- wilcox.test(before, after, paired = TRUE)
+res_compare_minus
+```
+
+Permutation: switch all the labels before and after randomly - look at the mean of the diff vector after that
+```{r}
+mean(diff_no5)
+
+saveRDS(melt_compare_minus, file = "melt_compare_minus.rds")
+sample(melt_compare_minus$Condition) #shuffle labels
+perm <- c()
+
+for (i in 1:1000){
+cat(i," ")
+df1 <- melt_compare_minus
+df1$Condition <- sample(df1$Condition)
+
+tmp <- mean(df1$Distance[df1$Condition == "Caloric restriction"]-df1$Distance[df1$Condition == "Baseline"])
+
+perm <- c(perm,tmp)
+}
+
+perm
+```
+
+Density plot
+```{r}
+plot(density(perm)); abline(v = 2.215)
+```
+
+Now we will try to calculate the area under the curve beyond the abline.
+```{r}
+d_fun <- ecdf(perm) #create the empirical cumulative distribution from sample data
+
+x0 <- 2.215 #assume a value for the vertical line (which is the mean of our real data)
+
+d_fun(x0) #area under curve less than or equal to x0
+
+1-d_fun(x0)
+```
