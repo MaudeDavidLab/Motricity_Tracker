@@ -21,7 +21,7 @@ Source code and analysis pipeline for the low-cost voluntary running activity tr
 
 ## This details the process of converting and processing raw data off the tracker into a usable format.
 
-#### Author: Grace Deitzler, updated January 7th, 2021.
+#### Author: Grace Deitzler, updated October 6th, 2021.
 
 1) Have a current installation of R or RStudio (https://rstudio.com/products/rstudio/)
 2) Download the conversion script Conversion_And_Processing.Rmd: https://github.com/MaudeDavidLab/Motricity_Tracker/blob/master/Conversion_and_Processing.Rmd.
