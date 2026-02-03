@@ -1,4 +1,4 @@
-# UPDATE 8/6/2024
+# UPDATE
 Our institutional affiliations have changed. Please email gdeitzler@gmail.com or nbira13@gmail.com with questions regarding the manuscript.
 
 # Motricity_Tracker
