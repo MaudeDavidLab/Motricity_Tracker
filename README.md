@@ -1,5 +1,5 @@
 # UPDATE 8/6/2024
-Our institutional affiliations have changed. Please email grace.deitzler@wyss.harvard.edu to contact Dr. Deitzler. 
+Our institutional affiliations have changed. Please email gdeitzler@gmail.com or nbira13@gmail.com with questions regarding the manuscript.
 
 # Motricity_Tracker
 Source code and analysis pipeline for the low-cost voluntary running activity tracking system.
